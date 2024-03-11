@@ -6,11 +6,9 @@ terraform {
     }
   }
 }
-variable "aws_profile" {
-  default = "admin"
-}
+
 provider "aws" {
-  region     = "eu-north-1"
+  region     = var.region
   profile = var.aws_profile
 }
 resource "tls_private_key" "rsa_4096" {
@@ -26,8 +24,13 @@ resource "aws_instance" "public_instance" {
 
  vpc_security_group_ids = [aws_security_group.sg_ec2.id] 
 
+ root_block_device {
+    volume_type = var.volume_type
+    volume_size = var.volume_size
+  }
+
   tags = {
-    Name = "public_instance"
+    Name = var.instance_name
   }
     provisioner "remote-exec" {
     inline = [
@@ -57,9 +60,7 @@ resource "aws_instance" "public_instance" {
 
 
 
-output "public_ip" {
-  value = aws_instance.public_instance.public_ip
-}
+
 
 resource "aws_security_group" "sg_ec2" {
   name        = "sg_ec2"
@@ -96,5 +97,21 @@ resource "aws_security_group" "sg_ec2" {
   }
 
 
+
+}
+
+resource "random_password" "my_secret_password" {
+length           = 8
+special          = true
+override_special = "!@#$*"
+}
+
+resource "aws_secretsmanager_secret" "my_test_secret_1" {
+name = "my_test_secret_1"
+}
+
+resource "aws_secretsmanager_secret_version" "my_test_secret_1_version" {
+secret_id     = aws_secretsmanager_secret.my_test_secret_1.id
+secret_string = random_password.my_secret_password.result
 
 }
